@@ -9,27 +9,34 @@ function App() {
     const [messages, setMessages] = useState([]);
     const [userName, setUserName] = useState("");
 
+    let joinChatTimeout;
+
     const joinChat = async (userName, chatRoom) => {
-        let connection = new HubConnectionBuilder()
-            // .withUrl("http://localhost:5234/chat")
-            .withUrl("https://real-time-chat-server-g5f0dgdwhqevgne4.northeurope-01.azurewebsites.net/chat")
-            .withAutomaticReconnect()
-            .build();
-
-
-        connection.on("ReceiveMessageWithSentiment", (userName, message, sentiment) => {
-            setMessages(messages => [...messages, { userName, message, sentiment }]);
-        });
-
-        try {
-            await connection.start();
-            await connection.invoke("JoinChat", {userName, chatRoom});
-            setConnection(connection);
-            setChatRoom(chatRoom);
-            setUserName(userName);
-        } catch (e) {
-            console.error(e);
+        if (joinChatTimeout) {
+            clearTimeout(joinChatTimeout);
         }
+
+        joinChatTimeout = setTimeout(async () => {
+            let connection = new HubConnectionBuilder()
+                .withUrl("https://real-time-chat-server-g5f0dgdwhqevgne4.northeurope-01.azurewebsites.net/chat")
+                .withAutomaticReconnect()
+                .build();
+
+
+            connection.on("ReceiveMessageWithSentiment", (userName, message, sentiment) => {
+                setMessages(messages => [...messages, {userName, message, sentiment}]);
+            });
+
+            try {
+                await connection.start();
+                await connection.invoke("JoinChat", {userName, chatRoom});
+                setConnection(connection);
+                setChatRoom(chatRoom);
+                setUserName(userName);
+            } catch (e) {
+                console.error(e);
+            }
+        }, 1000);
     };
 
     const closeChat = async () => {
@@ -49,7 +56,8 @@ function App() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            {connection ? <Chat messages={messages} chatRoom={chatRoom} closeChat={closeChat} sendMessage={sendMessage} userName={userName}/> :
+            {connection ? <Chat messages={messages} chatRoom={chatRoom} closeChat={closeChat} sendMessage={sendMessage}
+                                userName={userName}/> :
                 <WaitingRoom joinChat={joinChat}/>}
         </div>
     );
